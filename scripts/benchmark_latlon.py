@@ -31,8 +31,23 @@ def routage_point_distance_run(lat_a, lon_a, d, hdg,):
 
     return t_old, t_new, err
 
+def lossodromic_run(lat_a, lon_a, lat_b, lon_b):
+    start = time.perf_counter()
+    dist_old, hdg_old = utils.lossodromic(lat_a, lon_a, lat_b, lon_b, 
+                                          pyproj=False)
+    t_old = time.perf_counter() - start
+    start = time.perf_counter()
+    dist_new, hdg_new = utils.lossodromic(lat_a, lon_a, lat_b, lon_b,
+                                          pyproj=True)
+    t_new = time.perf_counter() - start
+    err_rel = abs(dist_old-dist_new)/dist_old
+    hdg_rel = abs(hdg_old-hdg_new)/hdg_old
+
+    return t_old, t_new, err_rel, hdg_rel
+
+
 def main():
-    iterations = 100_000
+    iterations = 10_000
 
     # utils.point_distance
     err_rel_pd = 0
@@ -43,6 +58,12 @@ def main():
     err_rp = 0
     t_old_rp = 0
     t_new_rp = 0
+
+    # lossodromic
+    err_loss_dist = 0
+    err_loss_hdg = 0
+    t_old_loss = 0
+    t_new_loss = 0
 
     for _ in range(iterations):
         lat_a = random.uniform(-90, 90)
@@ -64,10 +85,18 @@ def main():
         t_new_rp    += t_new
         err_rp  += err
 
+        # lossodromic
+        t_old, t_new, err_dist, err_hdg = lossodromic_run(lat_a, lon_a,
+                                                          lat_b, lon_b)
+        t_old_loss      += t_old
+        t_new_loss      += t_new
+        err_loss_dist   += err_dist
+        err_loss_hdg    += err_hdg
+
     print(f"Number of iterations: {iterations}")
 
     print(f">> utils.point_distance <<")
-    print(f"Sum relative error = {err_rel_pd:.6f}")
+    print(f"Sum relative error = {err_rel_pd:.3E}")
     print(f"latlon time:      {t_old_pd:.6f}")
     print(f"pyproj time time: {t_new_pd:.6f}")
     print(f"time reduction:   {t_old_pd/t_new_pd:.1f}x")
@@ -78,6 +107,12 @@ def main():
     print(f"pyproj time time: {t_new_rp:.6f}")
     print(f"time reduction:   {t_old_rp/t_new_rp:.1f}x")
 
+    print(f"\n>> utils.lossodromic <<")
+    print(f"Sum relative error (distance) = {err_loss_dist:.3E}")
+    print(f"Sum relative error (angle) =    {err_loss_hdg:.3E}")
+    print(f"latlon time:      {t_old_loss:.6f}")
+    print(f"pyproj time time: {t_new_loss:.6f}")
+    print(f"time reduction:   {t_old_loss/t_new_loss:.1f}x")
 if __name__ == "__main__":
     main()
 
